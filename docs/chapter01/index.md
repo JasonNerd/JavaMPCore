@@ -2,8 +2,8 @@
 title: "Java多线程 - 第一章"
 date: 2023-08-21T11:51:34+08: 00
 draft: false
-tags: ["MultiThread", "Java"]
-categories: ["concurrent"]
+tags: ["MultiThread"]
+categories: ["concurrent", "Java"]
 twemoji: true
 lightgallery: true
 ---
