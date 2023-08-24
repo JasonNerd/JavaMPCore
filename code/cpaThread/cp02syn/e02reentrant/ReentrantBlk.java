@@ -1,4 +1,4 @@
-package cpaThread.cp02syn.exm;
+package cpaThread.cp02syn.e02reentrant;
 
 public class ReentrantBlk {
     private int n;

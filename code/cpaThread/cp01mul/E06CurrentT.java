@@ -1,4 +1,4 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
 public class E06CurrentT extends Thread{
     public E06CurrentT(){

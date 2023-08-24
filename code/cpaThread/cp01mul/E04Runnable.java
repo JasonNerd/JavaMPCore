@@ -1,6 +1,6 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
-import cpaThread.basic.exm.IdRunnable;
+import cpaThread.cp01mul.exm.IdRunnable;
 
 public class E04Runnable {
 

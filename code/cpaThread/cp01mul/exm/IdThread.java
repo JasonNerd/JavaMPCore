@@ -1,4 +1,4 @@
-package cpaThread.basic.exm;
+package cpaThread.cp01mul.exm;
 
 public class IdThread extends Thread{
     // 具有 id, 可以将自己的id输出

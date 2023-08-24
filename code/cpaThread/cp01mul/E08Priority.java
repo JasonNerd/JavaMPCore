@@ -1,6 +1,6 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
-import cpaThread.basic.exm.PriorT;
+import cpaThread.cp01mul.exm.PriorT;
 
 public class E08Priority extends Thread{
 

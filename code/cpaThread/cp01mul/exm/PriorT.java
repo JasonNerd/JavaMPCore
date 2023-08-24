@@ -1,4 +1,4 @@
-package cpaThread.basic.exm;
+package cpaThread.cp01mul.exm;
 
 import java.util.Random;
 

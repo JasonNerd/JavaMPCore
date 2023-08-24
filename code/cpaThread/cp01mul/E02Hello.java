@@ -1,4 +1,4 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
 public class E02Hello extends Thread implements Runnable{
     // 通过继承 Thread 类定义自己的线程类, 重写 run() 方法以实现运行自己的业务逻辑

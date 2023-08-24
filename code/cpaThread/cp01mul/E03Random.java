@@ -1,6 +1,6 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
-import cpaThread.basic.exm.IdThread;
+import cpaThread.cp01mul.exm.IdThread;
 
 public class E03Random {
     public static void main(String[] args) {

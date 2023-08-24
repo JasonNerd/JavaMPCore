@@ -1,6 +1,6 @@
-package cpaThread.basic;
+package cpaThread.cp01mul;
 
-import cpaThread.basic.exm.SharedT;
+import cpaThread.cp01mul.exm.SharedT;
 
 public class E05Shared {
     public static void main(String[] args) {
