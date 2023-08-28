@@ -54,9 +54,71 @@ public void fun(){
 
 ### 7. 任意对象作为锁
 可以将当前对象作为锁, 则合理的, 可以将任意对象作为锁, 也即一个对象一把锁.
+结论:
+1. 当多个线程同时执行 synchronized(x){} 同步代码块时呈现同步效果.
+2. 当其他线程执行x对象中 synchronized 方法时呈现同步效果
+3. 当其他线程执行 x 对象中 synchronized(this) 代码块时呈现同步效果
 
 ### 8. 静态 synchronized 方法/代码块
+每一个 .java 文件对应的 Class 类的实例都是一个, 也就是在内存中是单例的. Class 类用于描述类的基本信息, 包括有多少个字段, 有多少个构造方法, 有多少个普通方法等等, 它在内存中仅保存一份.
 
+关键字 synchronized 可用于修饰 static 方法, 此时线程进入方法就需要持有该类的 Class 对象锁.
+
+值得注意的是, 静态Class锁与对象锁不一样, 他们不是同一个锁, 另一方面, 静态Class锁对所有的实例对象都起作用.
+
+### 9. String 常量池带来的同步问题
+任何对象都可以作为锁, 同理 String 常量也是, 然而假如一个方法使用String 常量作为锁, 可能导致一些误会, 例如:
+```java
+a = "ABC"
+b = "ABC"
+synchronized("ABC"){
+    // some code
+}
+synchronized(a){
+    // some code
+}
+synchronized(b){
+    // some code
+}
+```
+它们实际持有同一把锁, 因此一般不使用String 常量作为锁.
+
+### 10. 无限等待与线程死锁
+```java
+/**
+ * 死锁: 资源共享, 互斥访问, 循环等待, 占有申请
+ * 演示: 两个线程 a 和 b, 都需要访问变量 v, 其中访问操作 opa 需要 lockA 锁
+ * 访问操作 opb 需要 lockB 锁, 其中 a 持有 lockA 锁并且申请 lockB 锁, 线程 b 持有
+ * lockB 锁且申请 lockA 锁.
+ */
+```
+可以使用 `jps` 查看java进程:
+```cmd
+20928 
+35380 Launcher
+36516 Jps
+24092 E06Dead
+```
+再使用 `jstack -l 24092` 命令查看线程运行状况:
+```cmd
+......
+......
+Found one Java-level deadlock:
+=============================
+"a":
+  waiting to lock monitor 0x000001d6d3863540 (object 0x000000071b054bd8, a java.lang.Object),
+        at cpaThread.cp02syn.e06dead.DataSource.opa(DataSource.java:11)
+        - waiting to lock <0x000000071b054bc8> (a java.lang.Object)
+        at cpaThread.cp02syn.e06dead.DataSource.opb(DataSource.java:26)
+        - locked <0x000000071b054bd8> (a java.lang.Object)
+        at cpaThread.cp02syn.e06dead.E06Dead.lambda$main$1(E06Dead.java:23)
+        at cpaThread.cp02syn.e06dead.E06Dead$$Lambda$16/0x0000000800c02000.run(Unknown Source)
+        at java.lang.Thread.run(java.base@17.0.1/Thread.java:833)
+
+Found 1 deadlock.
+```
+### 11. 锁对象不可变
+`synchronized(object)` 中的 object 应当是不可变的, 锁对象的改变将导致线程异步执行, 注意这里的对象改变是指锁对象指向了一个新的引用, 其内部字段的修改并不能称之为对象变化.
 
 ## 代码附录
 ### 1. synchronized 修饰方法
@@ -350,4 +412,142 @@ public void addWithSyn(SigEleList<Integer> list, int t) throws InterruptedExcept
 
 ```
 则可以保证size始终为1
+
+### 8. 任意对象作为锁
+对象类:
+```java
+public class MethodStatic {
+    synchronized static void ssvA() {
+        System.out.println(Thread.currentThread().getName() + " enter A");
+        try{
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+        System.out.println(Thread.currentThread().getName() + " quit A");
+    }
+
+    synchronized static void ssvB() {
+        System.out.println(Thread.currentThread().getName() + " enter B");
+        try{
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+        System.out.println(Thread.currentThread().getName() + " quit B");
+    }
+
+    synchronized void svC() {
+        System.out.println(Thread.currentThread().getName() + " enter C");
+        try{
+            Thread.sleep(200);
+        } catch (InterruptedException e) {
+            System.out.println(e);
+        }
+        System.out.println(Thread.currentThread().getName() + " quit C");
+    }
+}
+```
+测试类
+```java
+public class E05Static {
+    public static void main(String[] args) {
+        Thread[] threads = new Thread[3];
+        MethodStatic a = new MethodStatic();
+        MethodStatic b = new MethodStatic();
+        threads[0] = new Thread(){
+            @Override
+            public void run() {
+                a.ssvA();       // 等价于 MethodStatic.ssvA
+            }
+        };
+        threads[1] = new Thread(){
+            @Override
+            public void run() {
+                b.ssvB();       // 等价于 MethodStatic.ssvB
+            }
+        };
+        threads[2] = new Thread(){
+            @Override
+            public void run() {
+                b.svC();
+            }
+        };
+        // a. 静态Class锁与对象锁不一样: 假如 1 和 2 是异步的
+        // b. 静态Class锁对所有的实例对象都起作用: 假如 0 和 1同步
+        for(Thread t: threads)
+            t.start();
+        // 由于线程较少, 因此可能运行多次才可观察到现象(主要是a)
+    }
+    /**
+     * Thread-1 enter B
+     * Thread-2 enter C
+     * Thread-1 quit B
+     * Thread-2 quit C
+     * Thread-0 enter A
+     * Thread-0 quit A
+     */
+}
+```
+
+### 10. 无限等待与线程死锁
+线程类
+```java
+public class DataSource {
+    private int var = 0;
+    final Object lockA = new Object();
+    final Object lockB = new Object();
+
+    public void opa() throws InterruptedException {
+        Thread.sleep((int)(Math.random()*100));
+        synchronized (lockA){
+            System.out.println(Thread.currentThread().getName()+" enter lockA.");
+            Thread.sleep((int)(Math.random()*200));
+            var = 1;
+            System.out.println(Thread.currentThread().getName()+" try lockB.");
+            opb();
+        }
+    }
+
+    public void opb() throws InterruptedException {
+        Thread.sleep((int)(Math.random()*120));
+        synchronized (lockB){
+            System.out.println(Thread.currentThread().getName()+" enter lockB.");
+            Thread.sleep((int)(Math.random()*180));
+            var = -1;
+            System.out.println(Thread.currentThread().getName()+" try lockA.");
+            opa();
+        }
+    }
+}
+```
+测试类
+```java
+public class E06Dead {
+    public static void main(String[] args) throws InterruptedException {
+        DataSource source = new DataSource();
+        Thread a = new Thread(()->{
+            try {
+                source.opa();
+            }catch (InterruptedException e){
+                e.printStackTrace();
+            }
+        });
+        Thread b = new Thread(()->{
+            try {
+                source.opb();
+            }catch (InterruptedException e){
+                e.printStackTrace();
+            }
+        });
+        a.setName("a");
+        b.setName("b");
+        a.start();
+        b.start();
+        a.join();
+        b.join();
+        System.out.println();
+    }
+}
+```
 
