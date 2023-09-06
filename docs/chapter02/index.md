@@ -2,7 +2,7 @@
 title: "Java多线程 - 第二章"
 date: 2023-08-21T16:26:01+08: 00
 draft: false
-tags: ["synchronized", "volatile"]
+tags: ["synchronized"]
 categories: ["concurrent", "Java"]
 twemoji: true
 lightgallery: true
