@@ -185,6 +185,152 @@ Thread Waiter 3 end waiting.
 """
 ```
 
+## while 的必要性 -- 条件改变
+编写 list 类及其同步add/remove操作:
+```java
+public class MList {
+    private List<String> ml = new ArrayList<>();
+    private final Object lock = new Object();
+    public void add(String e){
+        synchronized (lock){
+            ml.add(e);
+            System.out.println("Thread " + Thread.currentThread().getName()+ " add an element.");
+            lock.notifyAll();       // 唤醒正在等待的删除线程
+            System.out.println("[add] List size is " + ml.size());
+        }
+    }
 
+    public void remove() throws InterruptedException {
+        synchronized (lock){
+            if(ml.size() == 0){     // 如果为空则等待添加
+                System.out.println("Thread " + Thread.currentThread().getName()+ " now waiting.");
+                lock.wait();
+                System.out.println("Thread " + Thread.currentThread().getName()+ " now end waiting.");
+            }
+            ml.remove(0);   // 删除第一个元素
+            System.out.println("[removeA] List size is " + ml.size()+": Thread " + Thread.currentThread().getName());
+        }
+    }
+}
+```
+主测试函数如下, 它创建了几个adder/remover线程, 并人为的创造时延:
+```java
+public class ConditionChangeExp {
+    public static void main(String[] args) {
+        MList l = new MList();
+        final int th_num = 2;
+        // 新建 th_num 个 添加线程
+        for(int i=0; i<th_num; i++) {
+            Thread adder = new Thread(() -> {
+                while (true) {
+                    int t = (int) (Math.random() * 300);
+                    l.add(t + "");
+                    try {
+                        Thread.sleep(t);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            adder.setName("adder("+i+")");
+            adder.start();
+        }
+        // 新建 th_num 个 删除
+        for(int i=0; i<th_num; i++) {
+            Thread remover = new Thread(() -> {
+                while (true){
+                    int t = (int) (Math.random()*10);
+                    try {
+                        l.remove();
+                        Thread.sleep(t);
+                    } catch (InterruptedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+            });
+            remover.setName("remover("+i+")");
+            remover.start();
+        }
+    }
+}
+```
+输出如下:
+```java
+Thread adder(0) add an element.
+[add] List size is 1
+[removeA] List size is 0: Thread remover(1)
+Thread remover(0) now waiting.
+Thread adder(1) add an element.
+[add] List size is 1
+Thread remover(0) now end waiting.
+[removeA] List size is 0: Thread remover(0)
+Thread remover(1) now waiting.
+Thread remover(0) now waiting.
+Thread adder(0) add an element.
+[add] List size is 1
+Thread remover(1) now end waiting.
+[removeA] List size is 0: Thread remover(1)
+Thread remover(0) now end waiting.
+Thread remover(1) now waiting.
+Exception in thread "remover(0)" java.lang.IndexOutOfBoundsException: Index 0 out of bounds for length 0
+	at java.base/jdk.internal.util.Preconditions.outOfBounds(Preconditions.java:64)
+	at java.base/jdk.internal.util.Preconditions.outOfBoundsCheckIndex(Preconditions.java:70)
+	at java.base/jdk.internal.util.Preconditions.checkIndex(Preconditions.java:266)
+	at java.base/java.util.Objects.checkIndex(Objects.java:359)
+	at java.base/java.util.ArrayList.remove(ArrayList.java:504)
+	at cpaThread.cp03wn.e02while.MList.removeA(MList.java:29)
+	at cpaThread.cp03wn.e02while.ConditionChangeExp.lambda$main$1(ConditionChangeExp.java:29)
+	at java.base/java.lang.Thread.run(Thread.java:833)
+Thread adder(1) add an element.
+[add] List size is 1
+Thread remover(1) now end waiting.
+...
+...
+```
+remover(0) 由于出现下标越界异常, 因此死亡, 但 remover(1) 仍在工作, 因此程序仍在运行. 
 
+出现越界的主要原因是, 当出现两个 remover 都在等待的时候, 此时列表为空, 随后一个 adder 添加元素, 依次唤醒所有等待的 remover, 一个 remover 删除了一个元素后, 列表已为空, 随后另一个线程也被唤醒, 它紧接着执行wait()后的语句, 由于列表为空, remove(0) 将引起越界异常.
 
+因此, 一个方法是使用 while, 此时唤醒后还会继续检查是否为空, 由于为空, 因此会继续 waiting().
+
+考虑另一个情况, 我们可以检查正向的情况, 也即当列表非空时才删除, 否则等待, 由于 wait() 后面没有更多的业务操作, 而是进入下一轮竞争, 因此不会产生异常
+```java
+public void removeB() throws InterruptedException {
+    synchronized (lock){
+        if(ml.size() > 0){     // 如果为空则等待添加
+            System.out.println("Thread " + Thread.currentThread().getName()+ " begin delete.");
+            ml.remove(0);   // 删除第一个元素
+            System.out.println("Thread " + Thread.currentThread().getName()+ " end delete.");
+        } else {
+            System.out.println("\tThread " + Thread.currentThread().getName()+ " now waiting.");
+            lock.wait();
+            System.out.println("\tThread " + Thread.currentThread().getName()+ " now end waiting.");
+        }
+    }
+}
+/*
+Thread adder(0) add an element.
+[add] List size is 1
+Thread remover(1) begin delete.
+Thread remover(1) end delete.
+	Thread remover(0) now waiting.
+Thread adder(1) add an element.
+[add] List size is 1
+	Thread remover(0) now end waiting.
+Thread remover(1) begin delete.
+Thread remover(1) end delete.
+	Thread remover(1) now waiting.
+	Thread remover(0) now waiting.
+Thread adder(1) add an element.
+[add] List size is 1
+	Thread remover(1) now end waiting.
+	Thread remover(0) now end waiting.
+Thread remover(0) begin delete.
+Thread remover(0) end delete.
+	Thread remover(0) now waiting.
+	Thread remover(1) now waiting.
+Thread adder(0) add an element.
+...
+...
+*/
+```

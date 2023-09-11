@@ -3,24 +3,26 @@ package cpaThread.cp03wn.e02while;
 public class ConditionChangeExp {
     public static void main(String[] args) {
         MList l = new MList();
-        Thread ad = new Thread(){
-            @Override
-            public void run() {
-                while (true){
-                    int t = (int) (Math.random()*300);
-                    l.add(t+"");
+        final int th_num = 10;
+        // 新建 th_num 个 添加线程
+        for(int i=0; i<th_num; i++) {
+            Thread adder = new Thread(() -> {
+                while (true) {
+                    int t = (int) (Math.random() * 300);
+                    l.add(t + "");
                     try {
                         Thread.sleep(t);
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
                 }
-            }
-        };
-
-        Thread rm = new Thread(){
-            @Override
-            public void run() {
+            });
+            adder.setName("adder("+i+")");
+            adder.start();
+        }
+        // 新建 th_num 个 删除
+        for(int i=0; i<th_num; i++) {
+            Thread remover = new Thread(() -> {
                 while (true){
                     int t = (int) (Math.random()*10);
                     try {
@@ -30,12 +32,9 @@ public class ConditionChangeExp {
                         throw new RuntimeException(e);
                     }
                 }
-            }
-        };
-
-        ad.setName("Adder");
-        rm.setName("Remover");
-        ad.start();
-        rm.start();
+            });
+            remover.setName("remover("+i+")");
+            remover.start();
+        }
     }
 }

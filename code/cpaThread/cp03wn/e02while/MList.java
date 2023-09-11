@@ -13,8 +13,9 @@ public class MList {
     public void add(String e){
         synchronized (lock){
             ml.add(e);
-            lock.notifyAll();       // 唤醒正在等待的删除线程
             System.out.println("Thread " + Thread.currentThread().getName()+ " add an element.");
+            lock.notifyAll();       // 唤醒正在等待的删除线程
+            System.out.println("[add] List size is " + ml.size());
         }
     }
 
@@ -26,18 +27,22 @@ public class MList {
                 System.out.println("Thread " + Thread.currentThread().getName()+ " now end waiting.");
             }
             ml.remove(0);   // 删除第一个元素
-            System.out.println("List size is " + ml.size());
+            System.out.println("[removeA] List size is " + ml.size()+": Thread " + Thread.currentThread().getName());
         }
     }
 
     public void removeB() throws InterruptedException {
         synchronized (lock){
             if(ml.size() > 0){     // 如果为空则等待添加
-                System.out.println("Thread " + Thread.currentThread().getName()+ " now waiting.");
+                System.out.println("Thread " + Thread.currentThread().getName()+ " begin delete.");
                 ml.remove(0);   // 删除第一个元素
-                System.out.println("Thread " + Thread.currentThread().getName()+ " now end waiting.");
-            } else lock.wait();
-            System.out.println("List size is " + ml.size());
+                System.out.println("Thread " + Thread.currentThread().getName()+ " end delete.");
+            } else {
+                System.out.println("\tThread " + Thread.currentThread().getName()+ " now waiting.");
+                lock.wait();
+                System.out.println("\tThread " + Thread.currentThread().getName()+ " now end waiting.");
+            }
+//            System.out.println("[removeB] List size is " + ml.size()+": Thread " + Thread.currentThread().getName());
         }
     }
 }
