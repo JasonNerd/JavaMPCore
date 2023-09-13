@@ -2,8 +2,8 @@
 title: "第三章 -- 线程通信(3)-其他通信方式"
 date: 2023-09-12T14:37:38+08: 00
 draft: false
-tags: []
-categories: []
+tags: ["pipe", "join"]
+categories: ["concurrent", "Java"]
 twemoji: true
 lightgallery: true
 ---
