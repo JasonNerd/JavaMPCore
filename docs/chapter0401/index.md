@@ -168,3 +168,110 @@ CB@1 quit juice.
 CB@3 quit juice.
 
 ```
+
+## 生产者消费者模式
+### 一对一交替打印
+通过使用一个完成标志, 实现两个线程的交替执行.
+```java
+public class One2One {
+    private boolean havingSet = false;  // 标志位, 初始时表示共享变量未设置值
+    private final Lock lock = new ReentrantLock();
+    private final Condition c = lock.newCondition();
+
+    public void set() {
+        lock.lock();
+        if(havingSet){       // 已经有值了
+            try {c.await(); Thread.sleep(100);}
+            catch (InterruptedException e) {throw new RuntimeException(e);}
+        }
+        System.out.println(Thread.currentThread().getName()+" print ####");     // 表示已经生产
+        havingSet = true;
+        c.signal();
+        lock.unlock();
+    }
+
+    public void get() {
+        lock.lock();
+        if(!havingSet){      // 还没设置值
+            try { c.await(); Thread.sleep(100);}
+            catch (InterruptedException e) { throw new RuntimeException(e);}
+        }
+        System.out.println(Thread.currentThread().getName()+" print ****");     // 表示已经消费
+        havingSet = false;
+        c.signal();
+        lock.unlock();
+    }
+
+    public static void main(String[] args) {
+        One2One service = new One2One();
+        Thread producer = new Thread(()->{
+            while (true)
+                service.set();
+        });
+        Thread consumer = new Thread(()->{
+            while (true)
+                service.get();
+        });
+        producer.start();
+        consumer.start();
+    }
+}
+```
+它们交替执行, 输出如下:
+```
+Thread-0 print ####
+Thread-1 print ****
+Thread-0 print ####
+Thread-1 print ****
+Thread-0 print ####
+...
+...
+```
+如果是多个生产者消费者, 只需要把if改while, sinal 改sinalAll
+
+## 公平锁与非公平锁
+如下, 测试了公平锁与非公平锁, 默认 ReentrantLock 是非公平锁.
+```java
+public class IfFairService {
+    private final Lock lock;
+    public IfFairService(boolean ifFair){
+        lock = new ReentrantLock(ifFair);
+    }
+
+    public void service(){
+        lock.lock();
+        try {
+            System.out.println("----"+Thread.currentThread().getName()+"----");
+            Thread.sleep(20);
+        } catch (InterruptedException e){
+            e.printStackTrace();
+        }
+        lock.unlock();
+    }
+}
+```
+测试代码
+```java
+public class FairTest {
+    public static void main(String[] args) throws InterruptedException {
+        IfFairService service = new IfFairService(false);    // 调整锁是否公平锁
+        final int thread_num = 1000;
+        Thread[] fts = new Thread[thread_num];
+        for (int i=0; i<thread_num; i++){
+            fts[i] = new Thread(service::service);
+            fts[i].setName("First@"+i);
+        }
+        Thread[] sts = new Thread[thread_num];
+        for (int i=0; i<thread_num; i++) {
+            sts[i] = new Thread(service::service);
+            sts[i].setName("Second@" + i);
+        }
+        // 先启动 fts
+        for (int i=0; i<thread_num; i++)
+            fts[i].start();
+        // 再启动 sts
+        for (int i=0; i<thread_num; i++)
+            sts[i].start();
+    }
+}
+```

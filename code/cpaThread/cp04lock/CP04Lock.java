@@ -34,5 +34,4 @@ public class CP04Lock {
         for(int i=0; i<thread_num; i++)
             threads[i].start();
     }
-
 }
