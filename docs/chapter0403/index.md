@@ -1,9 +1,9 @@
 ---
-title: ""
+title: ""第四章 - Lock对象的使用(3) - 读写锁""
 date: 2023-09-15T14:25:11+08: 00
 draft: false
-tags: [""]
-categories: []
+tags: ["ReadWriteLock"]
+categories: ["concurrent", "Java"]
 twemoji: true
 lightgallery: true
 ---
